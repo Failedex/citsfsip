@@ -12,6 +12,7 @@ class Workspace():
         self.count = 0
         self.screen = rect
         self.next = None
+        self.ratio = 0.5
 
 class Window(Rect):
     def __init__(self, data, pid):
@@ -120,12 +121,10 @@ def eval_stack():
     prev = None
     while cur != None: 
         if not cur.exist():
-            # remove 
             if prev:
                 prev.next = cur.next 
             else:
                 workspaces.stack = cur.next
-
             workspaces.count -= 1 
 
         prev = cur
@@ -143,15 +142,15 @@ def eval_stack():
     )
 
     if workspaces.count > 1:
-        cur.set(width = cur.width//2)
+        cur.set(width = cur.width*workspaces.ratio)
         cur = cur.next 
         j = 0
         h = screen.height//(workspaces.count-1)
         while cur != None:
             cur.set(
                 y = screen.y + j*h,
-                x = screen.x + (screen.width//2) + 1,
-                width = screen.width//2,
+                x = screen.x + (screen.width*workspaces.ratio) + 1,
+                width = screen.width*(1-workspaces.ratio),
                 height = h
             )
             cur = cur.next
@@ -285,6 +284,49 @@ def mark(i3, e):
         i3.command(f"[pid={front.pid}] focus")
         return
 
+    res = tree.find_marked("incm")
+    if len(res) == 1:
+        m = res[0]
+        i3.command(f"[pid={m.pid}] unmark")
+        workspaces.ratio -= 0.02
+        eval_stack()
+        return
+
+    res = tree.find_marked("decm")
+    if len(res) == 1:
+        m = res[0]
+        i3.command(f"[pid={m.pid}] unmark")
+        workspaces.ratio += 0.02
+        eval_stack()
+        return
+
+def movewin(i3, e):
+    global workspaces
+    pid = e.container.pid or None
+    if pid == None:
+        return
+
+    # remove from current workspace
+    cur = workspaces.stack
+    prev = None
+    while cur != None:
+        if cur.pid == pid:
+            if prev:
+                prev.next = cur.next
+            else:
+                workspaces.stack = cur.next
+            workspaces.count -= 1
+        prev = cur
+        cur = cur.next
+
+    # move to new workspace
+    for w in i3.get_tree().workspaces():
+        for n in w.floating_nodes:
+            if n.pid == pid:
+                ws = new_workspace(w.name, w.rect)
+                add_win(pid, 0, 0, 100, 100, ws)
+
+    eval_stack()
 
 if __name__ == "__main__":
     workspaces = None
@@ -294,6 +336,8 @@ if __name__ == "__main__":
 
     i3.command("bindsym Mod4+k mark 'up'")
     i3.command("bindsym Mod4+j mark 'down'")
+    i3.command("bindsym Mod4+h mark 'incm'")
+    i3.command("bindsym Mod4+l mark 'decm'")
     i3.command("bindsym Mod4+Shift+Return mark 'master'")
     i3.command("for_window [app_id=.*] floating enable")
 
@@ -319,6 +363,7 @@ if __name__ == "__main__":
     i3.on(Event.WINDOW_NEW, new)
     i3.on(Event.WINDOW_CLOSE, close)
     i3.on(Event.WINDOW_MARK, mark)
+    i3.on(Event.WINDOW_MOVE, movewin)
     i3.on(Event.WORKSPACE_FOCUS, workspace)
 
     try:
