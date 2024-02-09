@@ -1,6 +1,10 @@
 # Completely impractical tiling system for sway in particular (citsfsip)
 This "simple" script mimics dynamic tiling (dwm) tiling on sway, it also adds window animations. Like the name suggest, it wasn't made to be practical. Rather, it was made because it was possible.
 
+
+https://github.com/Failedex/citsfsip/assets/92513573/8dc0490b-3bc8-4e81-ad2b-45fab7474dae
+
+
 ## Dependencies
 - python3
 - i3ipc python
