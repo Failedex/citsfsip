@@ -334,12 +334,11 @@ if __name__ == "__main__":
     anim = threading.Thread(target=move_all)
     margin = 10
 
-    i3.command("bindsym Mod4+k mark 'up'")
-    i3.command("bindsym Mod4+j mark 'down'")
-    i3.command("bindsym Mod4+h mark 'incm'")
-    i3.command("bindsym Mod4+l mark 'decm'")
-    i3.command("bindsym Mod4+Shift+Return mark 'master'")
-    i3.command("for_window [app_id=.*] floating enable")
+    # i3.command("bindsym Mod4+k mark 'up'")
+    # i3.command("bindsym Mod4+j mark 'down'")
+    # i3.command("bindsym Mod4+h mark 'incm'")
+    # i3.command("bindsym Mod4+l mark 'decm'")
+    # i3.command("bindsym Mod4+Shift+Return mark 'master'")
 
     # animation looks better when window comes from top
     i3.command("for_window [app_id=.*] move up 800px")
