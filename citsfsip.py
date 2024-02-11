@@ -4,6 +4,8 @@ import time
 import subprocess
 import math
 import threading
+import json
+from iconfetch import fetch
 
 class Workspace():
     def __init__(self, name, rect):
@@ -18,6 +20,8 @@ class Window(Rect):
     def __init__(self, data, pid):
         self.pid = pid
         self.next = None
+        self.icon = None
+        self.name = "idk"
         super().__init__(data)
 
     def __eq__(self, other):
@@ -39,21 +43,32 @@ class Window(Rect):
         if x is not None:
             self.x = x + margin
         if y is not None:
-            self.y = y + margin
+            self.y = y + margin + 40
         if width is not None:
             self.width = width - 2*margin
         if height is not None:
-            self.height = height - 2*margin
+            self.height = height - 2*margin -40
 
     def move(self, a:Rect, dx:float):
+        global focused_pid
 
-        a.x += (self.x-a.x)*dx
-        a.y += (self.y-a.y)*dx
-        a.width += (self.width-a.width)*dx
-        a.height += (self.height-a.height)*dx
+        x = a.x + (self.x-a.x)*dx
+        y = a.y + (self.y-a.y)*dx
+        width = a.width + (self.width-a.width)*dx
+        height = a.height + (self.height-a.height)*dx
 
-        i3.command(f"[pid={self.pid}] move absolute position {int(a.x)}px {int(a.y)}px")
-        i3.command(f"[pid={self.pid}] resize set width {int(a.width)}px height {int(a.height)}px")
+        i3.command(f"[pid={self.pid}] move absolute position {int(x)}px {int(y)}px")
+        i3.command(f"[pid={self.pid}] resize set width {int(width)}px height {int(height)}px")
+        return dict(
+            pid = self.pid,
+            icon = self.icon,
+            name = self.name,
+            focused = self.pid == focused_pid,
+            x = int(x)-1440,
+            y = int(y),
+            width = int(width),
+            height = int(height)
+        )
 
     def exist(self):
         return len(i3.get_tree().find_by_pid(self.pid)) > 0
@@ -84,16 +99,20 @@ def move_all():
         cur = cur.next
 
     start = time.time()
-    for i in range(25):
+    for i in range(60):
         t = time.time()-start 
         # exponential decay
-        dx = 1 - math.exp(-5*t)
+        # dx = 1 - math.exp(-15*t)
+        a = -5.2
+        b = 7.6
+        dx = 1-(math.exp(a*t)*math.cos(b*t))+0.5*(math.exp(a*t)*math.sin(b*t))
 
-        if i == 24:
+        if i >= 59:
             dx = 1
 
         cur = stack
         j = 0
+        data = []
         while cur != None:
             if cur.pid != target[j].pid:
                 return
@@ -104,12 +123,15 @@ def move_all():
             if workspaces.name != name:
                 return
 
-            cur.move(current[j], dx)
+            data.append(cur.move(current[j], dx))
 
             j += 1
             cur = cur.next
 
+        print(json.dumps(data), flush=True)
+
         time.sleep(1/60)
+
     
 def eval_stack():
     global workspaces
@@ -131,6 +153,7 @@ def eval_stack():
         cur = cur.next
 
     if workspaces.count == 0:
+        print(json.dumps([]), flush=True)
         return
 
     cur = workspaces.stack
@@ -177,7 +200,7 @@ def new_workspace(name, rect):
     prev.next = Workspace(name, rect)
     return prev.next
 
-def add_win(pid, x, y, width, height, workspace=None):
+def add_win(pid, x, y, width, height, workspace=None, icon=fetch("unknown"), name="idk"):
     global workspaces
     if workspace == None:
         workspace = workspaces
@@ -190,6 +213,8 @@ def add_win(pid, x, y, width, height, workspace=None):
     )
 
     new = Window(data, pid)
+    new.icon = icon
+    new.name = name
 
     if workspace.stack:
         new.next = workspace.stack 
@@ -222,7 +247,7 @@ def workspace(i3, e):
 
 def new(i3, e):
     cur = i3.get_tree().find_focused()
-    add_win(cur.pid, 0, 0, 100, 100)
+    add_win(cur.pid, 0, 0, 100, 100, None, fetch(cur.app_id) or fetch("unknown"), cur.name)
     eval_stack()
 
 def close(i3, e):
@@ -324,21 +349,28 @@ def movewin(i3, e):
         for n in w.floating_nodes:
             if n.pid == pid:
                 ws = new_workspace(w.name, w.rect)
-                add_win(pid, 0, 0, 100, 100, ws)
+                add_win(pid, 0, 0, 100, 100, ws, fetch(n.app_id) or fetch("unknown"), n.name)
 
     eval_stack()
+
+# def focus(i3, e):
+#     global focused_pid
+#     if e.container.pid:
+#         focused_pid = e.container.pid
+#     eval_stack()
 
 if __name__ == "__main__":
     workspaces = None
     i3 = Connection()
     anim = threading.Thread(target=move_all)
     margin = 10
+    focused_pid = 0
 
-    # i3.command("bindsym Mod4+k mark 'up'")
-    # i3.command("bindsym Mod4+j mark 'down'")
-    # i3.command("bindsym Mod4+h mark 'incm'")
-    # i3.command("bindsym Mod4+l mark 'decm'")
-    # i3.command("bindsym Mod4+Shift+Return mark 'master'")
+    i3.command("bindsym Mod4+k mark 'up'")
+    i3.command("bindsym Mod4+j mark 'down'")
+    i3.command("bindsym Mod4+h mark 'incm'")
+    i3.command("bindsym Mod4+l mark 'decm'")
+    i3.command("bindsym Mod4+Shift+Return mark 'master'")
 
     # animation looks better when window comes from top
     i3.command("for_window [app_id=.*] move up 800px")
@@ -363,6 +395,7 @@ if __name__ == "__main__":
     i3.on(Event.WINDOW_CLOSE, close)
     i3.on(Event.WINDOW_MARK, mark)
     i3.on(Event.WINDOW_MOVE, movewin)
+    # i3.on(Event.WINDOW_FOCUS, focus)
     i3.on(Event.WORKSPACE_FOCUS, workspace)
 
     try:

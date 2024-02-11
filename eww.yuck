@@ -1,0 +1,63 @@
+(deflisten windowdata :initial "[]" "./citsfsip.py")
+;; (defvar windowdata '[
+;;   {
+;;     "x": 100,
+;;     "y": 100,
+;;     "width": 500,
+;;     "height": 500
+;;     }
+;; ]')
+
+(defwindow windowbars
+  :geometry (geometry
+              :x 0
+              :y 0
+              :width "100%"
+              :height "100%"
+              :anchor "top left")
+  :stacking "bottom"
+  :monitor 0
+  (box 
+    :space-evenly false 
+    :halign "start"
+    :valign "start"
+    (for w in {windowdata}
+      (backwin :w w)
+      )))
+
+(defwidget backwin [w]
+  (box 
+    :class { w.focused ? "fwindow" : "window" }
+    :style "
+      margin-left: ${(w.x)-4}px;
+      margin-right: -${(w.x+w.width)+2}px;
+      margin-top: ${(w.y)-40}px;
+      margin-bottom: -${(w.y+w.height)+4}px;
+    "
+    (centerbox 
+      :style "margin: 5px;"
+      :valign "start"
+      :hexpand true
+      (image 
+        :halign "start"
+        :image-height 30
+        :image-width 30 
+        :path {w.icon})
+
+      (label
+        :text {w.name})
+
+      (box
+        :halign "end"
+        :orientation "h"
+        (button
+          :style "background-color: #42be65"
+          :width 30
+          :height 30
+          :onclick "swaymsg [pid=${w.pid}] mark 'master'")
+        (button
+          :style "background-color: #ff7eb6"
+          :width 30
+          :height 30
+          :onclick "swaymsg [pid=${w.pid}] kill"))
+      )))
