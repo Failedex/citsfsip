@@ -47,13 +47,13 @@ class Window(Rect):
 
     def move(self, a:Rect, dx:float):
 
-        a.x += (self.x-a.x)*dx
-        a.y += (self.y-a.y)*dx
-        a.width += (self.width-a.width)*dx
-        a.height += (self.height-a.height)*dx
+        x = a.x + (self.x-a.x)*dx
+        y = a.y + (self.y-a.y)*dx
+        width = a.width + (self.width-a.width)*dx
+        height = a.height + (self.height-a.height)*dx
 
-        i3.command(f"[pid={self.pid}] move absolute position {int(a.x)}px {int(a.y)}px")
-        i3.command(f"[pid={self.pid}] resize set width {int(a.width)}px height {int(a.height)}px")
+        i3.command(f"[pid={self.pid}] move absolute position {int(x)}px {int(y)}px")
+        i3.command(f"[pid={self.pid}] resize set width {int(width)}px height {int(height)}px")
 
     def exist(self):
         return len(i3.get_tree().find_by_pid(self.pid)) > 0
@@ -87,7 +87,11 @@ def move_all():
     for i in range(25):
         t = time.time()-start 
         # exponential decay
-        dx = 1 - math.exp(-5*t)
+        dx = 1 - math.exp(-15*t)
+
+        # a = -13
+        # b = 13
+        # dx = 1 - math.exp(a*t)*math.cos(b*t) - math.exp(a*t)*math.sin(b*t)
 
         if i == 24:
             dx = 1
