@@ -27,37 +27,80 @@
 
 (defwidget backwin [w]
   (box 
-    :class { w.focused ? "fwindow" : "window" }
     :style "
-      margin-left: ${(w.x)-4}px;
-      margin-right: -${(w.x+w.width)+2}px;
+      margin-left: ${(w.x)-8}px;
+      margin-right: -${(w.x+w.width)+8}px;
       margin-top: ${(w.y)-40}px;
-      margin-bottom: -${(w.y+w.height)+4}px;
+      margin-bottom: -${(w.y+w.height)+44}px;
     "
-    (centerbox 
-      :style "margin: 5px;"
-      :valign "start"
+    :space-evenly false
+    :orientation "v"
+
+    ;; ears 
+    (box 
+      :orientation "h"
+      :space-evenly false 
       :hexpand true
       (image 
         :halign "start"
-        :image-height 30
-        :image-width 30 
-        :path {w.icon})
+        :image-height 40 
+        :path "./sprites/catEarsLeft.svg")
+      (overlay
+        :hexpand true
+        (box
+          :class "window"
+          :hexpand true
+          :style "margin-top: 22px;")
+        (box 
+          :orientation "h"
+          :space-evenly true
+          (label 
+            :halign "start"
+            :class "bubble"
+            :text {w.name})
 
-      (label
-        :text {w.name})
+          (box 
+            :halign "end"
+            :class "bubble"
+            :space-evenly true
+            (button
+              :width 25
+              :onclick "swaymsg [pid=${w.pid}] mark 'master'"
+              (image :image-height 20 :path "./sprites/pawLeft.png"))
+            (button
+              :width 25
+              :onclick "swaymsg [pid=${w.pid}] kill"
+              (image :image-height 20 :path "./sprites/pawLeft.png")))
+            ))
 
-      (box
+      (image 
         :halign "end"
-        :orientation "h"
-        (button
-          :style "background-color: #42be65"
-          :width 30
-          :height 30
-          :onclick "swaymsg [pid=${w.pid}] mark 'master'")
-        (button
-          :style "background-color: #ff7eb6"
-          :width 30
-          :height 30
-          :onclick "swaymsg [pid=${w.pid}] kill"))
-      )))
+        :image-height 40 
+        :path "./sprites/catEarsRight.svg"))
+
+    (box 
+      :class { w.focused ? "fwindow" : "window" }
+      :hexpand true
+      :vexpand true
+      )
+
+    (box 
+      :orientation "h"
+      :space-evenly false 
+      :hexpand true
+      (image 
+        :halign "start"
+        :image-height 40 
+        :path "./sprites/pawsLeft.png")
+      
+      (box
+        :class "window"
+        :hexpand true
+        :style "margin-bottom: 16px;")
+
+      (image 
+        :halign "end"
+        :image-height 40 
+        :path "./sprites/pawsRight.png"))
+
+    )) 

@@ -39,7 +39,7 @@ class Window(Rect):
         return True
 
     def set(self, x = None, y = None, width = None, height = None):
-        margin = 5 
+        margin = 10 
         if x is not None:
             self.x = x + margin
         if y is not None:
@@ -47,7 +47,7 @@ class Window(Rect):
         if width is not None:
             self.width = width - 2*margin
         if height is not None:
-            self.height = height - 2*margin -40
+            self.height = height - 2*margin -80
 
     def move(self, a:Rect, dx:float):
         global focused_pid
@@ -99,15 +99,15 @@ def move_all():
         cur = cur.next
 
     start = time.time()
-    for i in range(60):
+    for i in range(25):
         t = time.time()-start 
         # exponential decay
-        # dx = 1 - math.exp(-15*t)
-        a = -5.2
-        b = 7.6
-        dx = 1-(math.exp(a*t)*math.cos(b*t))+0.5*(math.exp(a*t)*math.sin(b*t))
+        dx = 1 - math.exp(-15*t)
+        # a = -5.2
+        # b = 7.6
+        # dx = 1-(math.exp(a*t)*math.cos(b*t))+0.5*(math.exp(a*t)*math.sin(b*t))
 
-        if i >= 59:
+        if i >= 24:
             dx = 1
 
         cur = stack
@@ -247,7 +247,7 @@ def workspace(i3, e):
 
 def new(i3, e):
     cur = i3.get_tree().find_focused()
-    add_win(cur.pid, 0, 0, 100, 100, None, fetch(cur.app_id) or fetch("unknown"), cur.name)
+    add_win(cur.pid, 0, 0, 100, 100, None, fetch(cur.app_id) or fetch("unknown"), cur.app_id)
     eval_stack()
 
 def close(i3, e):
@@ -373,7 +373,9 @@ if __name__ == "__main__":
     i3.command("bindsym Mod4+Shift+Return mark 'master'")
 
     # animation looks better when window comes from top
-    i3.command("for_window [app_id=.*] move up 800px")
+
+    # nvm fuck this line in particular
+    # i3.command("for_window [app_id=.*] move up 800px")
 
     # get outputs screens
     for o in i3.get_tree().nodes: 
@@ -383,7 +385,7 @@ if __name__ == "__main__":
         for w in o.nodes:
             wo = new_workspace(w.name, w.rect)
             for l in w.floating_nodes:
-                add_win(l.pid, 0, 0, 100, 100, wo)
+                add_win(l.pid, 0, 0, 100, 100, wo, fetch(l.app_id) or fetch("unknown"), l.app_id)
                     
             if w.focused:
                 wo.next = workspaces

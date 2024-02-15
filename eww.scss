@@ -2,13 +2,13 @@
 * {
     all: unset;
     color: #dde1e6; 
-    font-size: 20px;
+    font-size: 16px;
     font-family: "Iosevka Nerd Font";
 }
 
 .window {
-    background-color: #262626;
-    border-radius: 5px;
+    background-color: #2D1F1D;
+    // border-radius: 5px;
 }
 .fwindow {
     background-color: #525252;
@@ -16,7 +16,17 @@
     border-radius: 5px;
 }
 
-button {
-    border-radius: 50px;
-    margin: 5px;
+.bubble {
+    border-radius: 15px;
+    color: #fff;
+    background-color: #412D2A;
+    border: 2px solid;
+    border-color: #2D1F1D;
+    padding: 5px;
+    margin: 2px;
 }
+
+// button {
+//     border-radius: 50px;
+//     margin: 5px;
+// }
