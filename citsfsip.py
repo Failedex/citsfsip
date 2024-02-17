@@ -188,12 +188,12 @@ class Citsfsip:
     async def setup(self):
         self.i3 = await Connection().connect()
 
-        await self.i3.command("bindsym Mod4+k mark 'up'")
-        await self.i3.command("bindsym Mod4+j mark 'down'")
-        await self.i3.command("bindsym Mod4+h mark 'incm'")
-        await self.i3.command("bindsym Mod4+l mark 'decm'")
-        await self.i3.command("bindsym Mod4+Shift+Return mark 'master'")
-        await self.i3.command("for_window [app_id=.*] floating enable")
+        # await self.i3.command("bindsym Mod4+k mark 'up'")
+        # await self.i3.command("bindsym Mod4+j mark 'down'")
+        # await self.i3.command("bindsym Mod4+h mark 'incm'")
+        # await self.i3.command("bindsym Mod4+l mark 'decm'")
+        # await self.i3.command("bindsym Mod4+Shift+Return mark 'master'")
+        # await self.i3.command("for_window [app_id=.*] floating enable")
 
         tree = await self.i3.get_tree()
 
