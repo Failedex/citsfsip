@@ -14,22 +14,22 @@ class Workspace():
         self.next = None
         self.ratio = 0.5
 
-    async def find_window(self, pid): 
+    async def find_window(self, id): 
         cur = self.stack 
         prev = None 
-        while cur != None and cur.pid != pid:
+        while cur != None and cur.id != id:
             prev = cur 
             cur = cur.next
         
         return (cur, prev)
 
-    async def add_win(self, pid):
+    async def add_win(self, id):
         new = Window(dict(
             x = 0, 
             y = 0, 
             width = 100, 
             height = 100
-        ), pid)
+        ), id)
 
         if self.stack:
             new.next = self.stack
@@ -43,7 +43,7 @@ class Workspace():
         prev = None 
         tree = await i3.get_tree()
         while cur != None:
-            if len(tree.find_by_pid(cur.pid)) == 0:
+            if not tree.find_by_id(cur.id):
                 # removal
                 if prev:
                     prev.next = cur.next 
@@ -93,20 +93,20 @@ class Workspace():
     async def move_all(self, i3):
         global animid 
         # if another animation starts running, this one will be cancelled
-        id = animid
+        aid = animid
 
         current = []
 
         cur = self.stack 
         tree = await i3.get_tree()
         while cur != None:
-            win = tree.find_by_pid(cur.pid)
-            if len(win) == 0:
+            win = tree.find_by_id(cur.id)
+            if win == 0:
                 return
 
-            win[0].rect.y -= win[0].deco_rect.height
-            win[0].rect.height += win[0].deco_rect.height
-            current.append(win[0].rect)
+            win.rect.y -= win.deco_rect.height
+            win.rect.height += win.deco_rect.height
+            current.append(win.rect)
 
             cur = cur.next
 
@@ -130,7 +130,7 @@ class Workspace():
             cur = self.stack
             j = 0 
             while cur != None:
-                if animid != id:
+                if animid != aid:
                     return
 
                 await cur.move(i3, current[j], dx)
@@ -141,8 +141,8 @@ class Workspace():
             await asyncio.sleep(1/60)
 
 class Window(Rect):
-    def __init__(self, data, pid):
-        self.pid = pid
+    def __init__(self, data, id):
+        self.id = id
         self.next = None
         super().__init__(data)
 
@@ -177,8 +177,8 @@ class Window(Rect):
         width = a.width + (self.width-a.width)*dx
         height = a.height + (self.height-a.height)*dx
 
-        await i3.command(f"[pid={self.pid}] resize set width {int(width)}px height {int(height)}px")
-        await i3.command(f"[pid={self.pid}] move absolute position {int(x)}px {int(y)}px")
+        await i3.command(f"[con_id={self.id}] resize set width {int(width)}px height {int(height)}px")
+        await i3.command(f"[con_id={self.id}] move absolute position {int(x)}px {int(y)}px")
 
 class Citsfsip:
     def __init__(self):
@@ -201,7 +201,7 @@ class Citsfsip:
             wo = await self.get_workspace(w.name, w.rect)
             
             for l in w.floating_nodes:
-                await wo.add_win(l.pid)
+                await wo.add_win(l.id)
 
         self.i3.on(Event.WINDOW_NEW, self.window_new)
         self.i3.on(Event.WINDOW_CLOSE, self.window_close)
@@ -213,7 +213,7 @@ class Citsfsip:
     async def window_new(self, i3, e):
         tree = await i3.get_tree()
         cur = tree.find_focused()
-        await self.workspace.add_win(cur.pid)
+        await self.workspace.add_win(cur.id)
         await self.workspace.eval_stack(i3)
 
     async def window_close(self, i3, e):
@@ -228,8 +228,8 @@ class Citsfsip:
 
         if len(res) == 1:
             m = res[0]
-            await i3.command(f"[pid={m.pid}] unmark")
-            cur, prev = await self.workspace.find_window(m.pid)
+            await i3.command(f"[con_id={m.id}] unmark")
+            cur, prev = await self.workspace.find_window(m.id)
 
             if not cur or not prev:
                 return 
@@ -244,34 +244,34 @@ class Citsfsip:
         res = tree.find_marked("up")
         if len(res) == 1:
             m = res[0]
-            await i3.command(f"[pid={m.pid}] unmark")
-            cur, prev = await self.workspace.find_window(m.pid)
+            await i3.command(f"[con_id={m.id}] unmark")
+            cur, prev = await self.workspace.find_window(m.id)
 
             if not prev:
                 prev = cur 
                 while prev.next != None:
                     prev = prev.next
 
-            await i3.command(f"[pid={prev.pid}] focus")
+            await i3.command(f"[con_id={prev.id}] focus")
             return
 
         res = tree.find_marked("down")
         if len(res) == 1:
             m = res[0]
-            await i3.command(f"[pid={m.pid}] unmark")
-            cur, _ = await self.workspace.find_window(m.pid)
+            await i3.command(f"[con_id={m.id}] unmark")
+            cur, _ = await self.workspace.find_window(m.id)
 
             front = cur.next 
             if not front:
                 front = self.workspace.stack
 
-            await i3.command(f"[pid={front.pid}] focus")
+            await i3.command(f"[con_id={front.id}] focus")
             return
 
         res = tree.find_marked("incm")
         if len(res) == 1:
             m = res[0]
-            await i3.command(f"[pid={m.pid}] unmark")
+            await i3.command(f"[con_id={m.id}] unmark")
             self.workspace.ratio -= 0.02
             await self.workspace.eval_stack(i3)
             return
@@ -279,20 +279,20 @@ class Citsfsip:
         res = tree.find_marked("decm")
         if len(res) == 1:
             m = res[0]
-            await i3.command(f"[pid={m.pid}] unmark")
+            await i3.command(f"[con_id={m.id}] unmark")
             self.workspace.ratio += 0.02
             await self.workspace.eval_stack(i3)
             return
 
     async def window_move(self, i3, e):
-        pid = e.container.pid or None
-        if pid == None:
+        id = e.container.id or None
+        if id == None:
             return
 
         cur = self.workspace.stack 
         prev = None
         while cur != None:
-            if cur.pid == pid:
+            if cur.id == id:
                 if prev:
                     prev.next = cur.next
                 else: 
@@ -304,9 +304,9 @@ class Citsfsip:
         tree = await i3.get_tree()
         for w in tree.workspaces():
             for n in w.floating_nodes: 
-                if n.pid == pid:
+                if n.id == id:
                     ws = await self.get_workspace(w.name, w.rect)
-                    await ws.add_win(pid)
+                    await ws.add_win(id)
 
         await self.workspace.eval_stack(i3)
 
