@@ -115,7 +115,8 @@ class Workspace():
         frames = 25
 
         for i in range(frames):
-            t = time.time()-start
+            fstart = time.time()
+            t = fstart-start
 
             # exponential decay
             dx = 1 - math.exp(-15*t)
@@ -138,7 +139,7 @@ class Workspace():
                 cur = cur.next
 
             # manual cap at 60hz
-            await asyncio.sleep(1/60)
+            await asyncio.sleep(max(1/60 - (fstart-time.time()), 0))
 
 class Window(Rect):
     def __init__(self, data, id):
