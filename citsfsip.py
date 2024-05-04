@@ -5,6 +5,19 @@ import time
 import math
 import asyncio
 
+TILE = Rect(dict(
+    x = 0, 
+    y = 0, 
+    width = 700, 
+    height = 400
+))
+CTILE = Rect(dict(
+    x = 0, 
+    y = 0, 
+    width = 1200, 
+    height = 700
+))
+
 class Workspace():
     def __init__(self, name, rect):
         self.name = name
@@ -12,7 +25,18 @@ class Workspace():
         self.count = 0
         self.screen = rect
         self.next = None
-        self.ratio = 0.5
+        self.pivot = Rect(dict(
+            x = rect.x +(rect.width//2 - TILE.width//2),
+            y = rect.y +(rect.height//2 - TILE.height//2),
+            width = TILE.width,
+            height = TILE.height
+        ))
+        self.center = Rect(dict(
+            x = rect.x +(rect.width//2 - CTILE.width//2),
+            y = rect.y +(rect.height//2 - CTILE.height//2),
+            width = CTILE.width,
+            height = CTILE.height
+        ))
 
     async def find_window(self, id): 
         cur = self.stack 
@@ -61,30 +85,30 @@ class Workspace():
             return
 
         screen = self.screen
+        pivot = self.pivot
+        center = self.center
         cur = self.stack 
         await cur.set(
-            x = screen.x,
-            y = screen.y,
-            width = screen.width,
-            height = screen.height
+            x = center.x,
+            y = center.y,
+            width = center.width,
+            height = center.height
         )
 
         if self.count > 1:
-            await cur.set(width = cur.width*self.ratio)
             cur = cur.next 
             j = 0
-            h = screen.height//(self.count-1)
             
             while cur != None:
                 await cur.set(
-                    y = screen.y + j*h,
-                    x = screen.x + (screen.width*self.ratio) + 1,
-                    width = screen.width*(1-self.ratio),
-                    height = h
+                    y = pivot.y + (screen.height//3.3 * math.sin(j)),
+                    x = pivot.x + (screen.width//3.3 * math.cos(j)),
+                    width = pivot.width,
+                    height = pivot.height
                 )
 
                 cur = cur.next
-                j += 1
+                j += (2*math.pi/(self.count-1))
 
         # play animation
         await self.move_all(i3)
@@ -194,7 +218,7 @@ class Citsfsip:
         # await self.i3.command("bindsym Mod4+h mark 'incm'")
         # await self.i3.command("bindsym Mod4+l mark 'decm'")
         # await self.i3.command("bindsym Mod4+Shift+Return mark 'master'")
-        # await self.i3.command("for_window [app_id=.*] floating enable")
+        await self.i3.command("for_window [app_id=.*] floating enable")
 
         tree = await self.i3.get_tree()
 
@@ -208,8 +232,21 @@ class Citsfsip:
         self.i3.on(Event.WINDOW_CLOSE, self.window_close)
         self.i3.on(Event.WINDOW_MARK, self.window_mark)
         self.i3.on(Event.WINDOW_MOVE, self.window_move)
+        self.i3.on(Event.WINDOW_FOCUS, self.window_focus)
         self.i3.on(Event.WORKSPACE_FOCUS, self.workspace_focus)
         await self.i3.main()
+
+    async def window_focus(self, i3, e):
+        cur, prev = await self.workspace.find_window(e.container.id)
+
+        if not cur or not prev:
+            return 
+
+        prev.next = cur.next
+        cur.next = self.workspace.stack
+        self.workspace.stack = cur
+
+        await self.workspace.eval_stack(i3)
 
     async def window_new(self, i3, e):
         tree = await i3.get_tree()
@@ -226,7 +263,6 @@ class Citsfsip:
         tree = await i3.get_tree()
         
         res = tree.find_marked("master")
-
         if len(res) == 1:
             m = res[0]
             await i3.command(f"[con_id={m.id}] unmark")
@@ -267,22 +303,6 @@ class Citsfsip:
                 front = self.workspace.stack
 
             await i3.command(f"[con_id={front.id}] focus")
-            return
-
-        res = tree.find_marked("incm")
-        if len(res) == 1:
-            m = res[0]
-            await i3.command(f"[con_id={m.id}] unmark")
-            self.workspace.ratio -= 0.02
-            await self.workspace.eval_stack(i3)
-            return
-
-        res = tree.find_marked("decm")
-        if len(res) == 1:
-            m = res[0]
-            await i3.command(f"[con_id={m.id}] unmark")
-            self.workspace.ratio += 0.02
-            await self.workspace.eval_stack(i3)
             return
 
     async def window_move(self, i3, e):
