@@ -5,6 +5,14 @@ import time
 import math
 import asyncio
 
+FPS = 60 
+DURATION = 0.6
+try:
+    import anims
+    DX = anims.ease_out_bounce
+except: 
+    DX = lambda t: 1 - (1-t)*(1-t)
+
 class Workspace():
     def __init__(self, name, rect):
         self.name = name
@@ -96,10 +104,9 @@ class Workspace():
         aid = animid
 
         current = []
-
         cur = self.stack 
         tree = await i3.get_tree()
-        while cur != None:
+        while cur:
             win = tree.find_by_id(cur.id)
             if win == 0:
                 return
@@ -111,21 +118,14 @@ class Workspace():
             cur = cur.next
 
         start = time.time()
-
-        frames = 25
+        frames = int(DURATION * FPS)
 
         for i in range(frames):
             fstart = time.time()
-            t = fstart-start
+            t = (fstart-start)/DURATION
+            dx = DX(t)
 
-            # exponential decay
-            dx = 1 - math.exp(-15*t)
-
-            # a = -5.2
-            # b = 7.6
-            # dx = 1-(math.exp(a*t)*math.cos(b*t))+0.5*(math.exp(a*t)*math.sin(b*t))
-
-            if i == frames-1:
+            if t >= 1:
                 dx = 1
 
             cur = self.stack
@@ -138,8 +138,11 @@ class Workspace():
                 j += 1
                 cur = cur.next
 
+            if t >= 1:
+                return
+
             # manual cap at 60hz
-            await asyncio.sleep(max(1/60 - (fstart-time.time()), 0))
+            await asyncio.sleep(max(1/FPS - (fstart-time.time()), 0))
 
 class Window(Rect):
     def __init__(self, data, id):
@@ -189,12 +192,11 @@ class Citsfsip:
     async def setup(self):
         self.i3 = await Connection().connect()
 
-        # await self.i3.command("bindsym Mod4+k mark 'up'")
-        # await self.i3.command("bindsym Mod4+j mark 'down'")
-        # await self.i3.command("bindsym Mod4+h mark 'incm'")
-        # await self.i3.command("bindsym Mod4+l mark 'decm'")
-        # await self.i3.command("bindsym Mod4+Shift+Return mark 'master'")
-        # await self.i3.command("for_window [app_id=.*] floating enable")
+        # await self.i3.command("bindsym Mod4+k mark '_up'")
+        # await self.i3.command("bindsym Mod4+j mark '_down'")
+        # await self.i3.command("bindsym Mod4+h mark '_incm'")
+        # await self.i3.command("bindsym Mod4+l mark '_decm'")
+        # await self.i3.command("bindsym Mod4+Shift+Return mark '_master'")
 
         tree = await self.i3.get_tree()
 
@@ -212,8 +214,8 @@ class Citsfsip:
         await self.i3.main()
 
     async def window_new(self, i3, e):
-        tree = await i3.get_tree()
-        cur = tree.find_focused()
+        cur = e.container
+        await cur.command("floating enable")
         await self.workspace.add_win(cur.id)
         await self.workspace.eval_stack(i3)
 
@@ -222,14 +224,14 @@ class Citsfsip:
 
     async def window_mark(self, i3, e):
         stack = self.workspace.stack 
+        marks = e.container.marks
 
-        tree = await i3.get_tree()
-        
-        res = tree.find_marked("master")
+        if len(marks) == 0 or not self.workspace:
+            return
+        await e.container.command("unmark")
+        m = e.container
 
-        if len(res) == 1:
-            m = res[0]
-            await i3.command(f"[con_id={m.id}] unmark")
+        if "_master" in marks:
             cur, prev = await self.workspace.find_window(m.id)
 
             if not cur or not prev:
@@ -242,10 +244,7 @@ class Citsfsip:
             await self.workspace.eval_stack(i3)
             return 
 
-        res = tree.find_marked("up")
-        if len(res) == 1:
-            m = res[0]
-            await i3.command(f"[con_id={m.id}] unmark")
+        if "_up" in marks:
             cur, prev = await self.workspace.find_window(m.id)
 
             if not prev:
@@ -256,10 +255,7 @@ class Citsfsip:
             await i3.command(f"[con_id={prev.id}] focus")
             return
 
-        res = tree.find_marked("down")
-        if len(res) == 1:
-            m = res[0]
-            await i3.command(f"[con_id={m.id}] unmark")
+        if "_down" in marks:
             cur, _ = await self.workspace.find_window(m.id)
 
             front = cur.next 
@@ -269,18 +265,12 @@ class Citsfsip:
             await i3.command(f"[con_id={front.id}] focus")
             return
 
-        res = tree.find_marked("incm")
-        if len(res) == 1:
-            m = res[0]
-            await i3.command(f"[con_id={m.id}] unmark")
+        if "_incm" in marks:
             self.workspace.ratio -= 0.02
             await self.workspace.eval_stack(i3)
             return
 
-        res = tree.find_marked("decm")
-        if len(res) == 1:
-            m = res[0]
-            await i3.command(f"[con_id={m.id}] unmark")
+        if "_decm" in marks:
             self.workspace.ratio += 0.02
             await self.workspace.eval_stack(i3)
             return
